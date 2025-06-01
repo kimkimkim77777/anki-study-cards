@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>学习卡片</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #fffbf0 0%, #fff7ed 50%, #fff1f2 100%);
+            min-height: 100vh;
+            padding: 15px;
+            touch-action: manipulation;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-weight: 300;
+            font-size: 0.9rem;
+        }
+
+        /* 主题切换 */
+        .theme-toggle {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 100;
+        }
+
+        .toggle-switch {
+            width: 50px;
+            height: 25px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .toggle-switch::before {
+            content: '☀️';
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.8), rgba(249, 115, 22, 0.6));
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+        }
+
+        .toggle-switch.dark::before {
+            content: '🌙';
+            left: 26px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.6));
+        }
+
+        /* 导航卡片 */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .nav-card {
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 15px;
+            padding: 20px 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            touch-action: manipulation;
+        }
+
+        .nav-card:active {
+            transform: scale(0.95);
+        }
+
+        .nav-card .icon {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .nav-card h3 {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .nav-card p {
+            font-size: 0.75rem;
+            color: #6b7280;
+            font-weight: 300;
+        }
+
+        /* 页面 */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .back-btn {
+            color: rgba(180, 83, 9, 0.8);
+            text-decoration: none;
+            font-weight: 300;
+            margin-bottom: 20px;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+
+        /* 学习卡片 */
+        .card-study {
+            perspective: 1000px;
+            margin-bottom: 25px;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 250px;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .card-inner.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, rgba(255, 251, 235, 0.9), rgba(254, 243, 199, 0.7));
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, rgba(255, 241, 242, 0.9), rgba(252, 231, 243, 0.7));
+            border: 1px solid rgba(251, 113, 133, 0.3);
+            transform: rotateY(180deg);
+        }
+
+        .category-tag {
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 400;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(249, 115, 22, 0.1));
+            color: rgba(180, 83, 9, 0.9);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .card-text {
+            font-size: 1.1rem;
+            color: #374151;
+            text-align: center;
+            line-height: 1.5;
+            font-weight: 300;
+            max-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .card-text.long-text {
+            font-size: 1rem;
+            text-align: left;
+        }
+
+        .card-text.very-long-text {
+            font-size: 0.9rem;
+            text-align: left;
+        }
+
+        /* 按钮 */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 300;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: rgba(180, 83, 9, 0.8);
+            font-size: 0.85rem;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.4), rgba(249, 115, 22, 0.3));
+            border-color: rgba(251, 191, 36, 0.5);
+        }
+
+        /* 表单 */
+        .form-container {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .form-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #374151;
+            font-weight: 300;
+            font-size: 1.2rem;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #6b7280;
+            font-weight: 300;
+            font-size: 0.85rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.8);
+            font-family: inherit;
+            font-weight: 300;
+            resize: none;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: rgba(251, 191, 36, 0.6);
+        }
+
+        /* 统计 */
+        .stats {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .stats-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            font-size: 0.8rem;
+        }
+
+        .stats-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: rgba(251, 191, 36, 0.7);
+        }
+
+        /* 夜间模式 */
+        body.dark {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f1419 100%);
+        }
+
+        .dark .header h1 {
+            color: #e5e7eb;
+        }
+
+        .dark .header p {
+            color: #9ca3af;
+        }
+
+        .dark .nav-card {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .nav-card h3 {
+            color: #e5e7eb;
+        }
+
+        .dark .nav-card p {
+            color: #9ca3af;
+        }
+
+        .dark .toggle-switch {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .back-btn {
+            color: rgba(139, 92, 246, 0.8);
+        }
+
+        .dark .card-front {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(51, 65, 85, 0.7));
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .card-back {
+            background: linear-gradient(135deg, rgba(55, 48, 163, 0.3), rgba(99, 102, 241, 0.2));
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .dark .category-tag {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.2));
+            color: rgba(139, 92, 246, 0.9);
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .dark .card-text {
+            color: #e5e7eb;
+        }
+
+        .dark .btn {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: rgba(139, 92, 246, 0.9);
+        }
+
+        .dark .btn-primary {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.3));
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        .dark .form-container {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .form-title {
+            color: #e5e7eb;
+        }
+
+        .dark .form-group label {
+            color: #9ca3af;
+        }
+
+        .dark .form-group input,
+        .dark .form-group select,
+        .dark .form-group textarea {
+            background: rgba(51, 65, 85, 0.8);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: #e5e7eb;
+        }
+
+        .dark .stats-card {
+            background: rgba(30, 41, 59, 0.5);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: #9ca3af;
+        }
+
+        .dark .stats-dot {
+            background: rgba(99, 102, 241, 0.7);
+        }
+
+        /* 卡片信息 */
+        .card-info {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+
+        .dark .card-info {
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 主题切换 -->
+        <div class="theme-toggle">
+            <div class="toggle-switch" id="theme-toggle" onclick="toggleTheme()"></div>
+        </div>
+
+        <!-- 主页 -->
+        <div id="home" class="page active">
+            <div class="header">
+                <h1>学习卡片</h1>
+                <p>优雅地记忆，温柔地学习</p>
+            </div>
+
+            <div class="nav-grid">
+                <div class="nav-card" onclick="showPage('study')">
+                    <div class="icon">📖</div>
+                    <h3>开始学习</h3>
+                    <p>复习卡片</p>
+                </div>
+
+                <div class="nav-card" onclick="showPage('add')">
+                    <div class="icon">➕</div>
+                    <h3>添加卡片</h3>
+                    <p>创建内容</p>
+                </div>
+
+                <div class="nav-card" onclick="showPage('manage')">
+                    <div class="icon">📝</div>
+                    <h3>卡片管理</h3>
+                    <p>编辑整理</p>
+                </div>
+
+                <div class="nav-card" onclick="showPage('data')">
+                    <div class="icon">⚙️</div>
+                    <h3>数据管理</h3>
+                    <p>备份恢复</p>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stats-card">
+                    <span>共 <span id="total-cards">0</span> 张</span>
+                    <div class="stats-dot"></div>
+                    <span>待复习 <span id="review-cards">0</span> 张</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 学习页面 -->
+        <div id="study" class="page">
+            <a href="#" class="back-btn" onclick="showPage('home')">← 返回</a>
+            
+            <div class="card-study">
+                <div class="card-inner" id="card" onclick="flipCard()">
+                    <div class="card-face card-front">
+                        <div class="category-tag" id="category-display">分类</div>
+                        <div class="card-text" id="front-text">开始学习吧</div>
+                    </div>
+                    <div class="card-face card-back">
+                        <div class="category-tag">答案</div>
+                        <div class="card-text" id="back-text">答案内容</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn" onclick="prevCard()">← 上一张</button>
+                <button class="btn btn-primary" onclick="flipCard()">翻转</button>
+                <button class="btn" onclick="nextCard()">下一张 →</button>
+            </div>
+
+            <div class="card-info">
+                <span id="card-info">0 / 0</span>
+            </div>
+        </div>
+
+        <!-- 添加卡片页面 -->
+        <div id="add" class="page">
+            <a href="#" class="back-btn" onclick="showPage('home')">← 返回</a>
+            
+            <div class="form-container">
+                <h2 class="form-title">添加新卡片</h2>
+                
+                <div class="form-group">
+                    <label>分类</label>
+                    <select id="new-category">
+                        <option value="日语">日语</option>
+                        <option value="英语">英语</option>
+                        <option value="法语">法语</option>
+                        <option value="数学">数学</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>正面（问题）</label>
+                    <textarea id="new-front" rows="3" placeholder="输入问题..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>背面（答案）</label>
+                    <textarea id="new-back" rows="3" placeholder="输入答案..."></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="addCard()" style="width: 100%;">添加卡片</button>
+            </div>
+        </div>
+
+        <!-- 简化的管理页面 -->
+        <div id="manage" class="page">
+            <a href="#" class="back-btn" onclick="showPage('home')">← 返回</a>
+            
+            <div class="form-container">
+                <h2 class="form-title">卡片管理</h2>
+                <div id="cards-list">
+                    <!-- 简化的卡片列表 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据管理页面 -->
+        <div id="data" class="page">
+            <a href="#" class="back-btn" onclick="showPage('home')">← 返回</a>
+            
+            <div class="form-container">
+                <h2 class="form-title">数据管理</h2>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn btn-primary" onclick="exportData()">💾 导出数据</button>
+                    <label class="btn" style="text-align: center; cursor: pointer;">
+                        📂 导入数据
+                        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+                    </label>
+                </div>
+                
+                <p style="text-align: center; color: #6b7280; font-size: 0.8rem; margin-top: 15px;">
+                    定期备份你的学习数据
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 数据管理
+        let cards = JSON.parse(localStorage.getItem('mobile-cards') || '[]');
+        let currentIndex = 0;
+        let isFlipped = false;
+        let isDarkMode = localStorage.getItem('mobile-darkMode') === 'true';
+
+        // 初始化数据
+        if (cards.length === 0) {
+            cards = [
+                { id: 1, category: '日语', front: 'こんにちは', back: '你好' },
+                { id: 2, category: '英语', front: 'Hello\nWorld', back: '你好\n世界' }
+            ];
+            saveData();
+        }
+
+        // 初始化主题
+        function initTheme() {
+            if (isDarkMode) {
+                document.body.classList.add('dark');
+                document.getElementById('theme-toggle').classList.add('dark');
+            }
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('mobile-darkMode', isDarkMode);
+            
+            if (isDarkMode) {
+                document.body.classList.add('dark');
+                document.getElementById('theme-toggle').classList.add('dark');
+            } else {
+                document.body.classList.remove('dark');
+                document.getElementById('theme-toggle').classList.remove('dark');
+            }
+        }
+
+        // 保存数据
+        function saveData() {
+            localStorage.setItem('mobile-cards', JSON.stringify(cards));
+            updateStats();
+        }
+
+        // 更新统计
+        function updateStats() {
+            document.getElementById('total-cards').textContent = cards.length;
+            document.getElementById('review-cards').textContent = cards.length;
+        }
+
+        // 页面切换
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+            
+            if (pageId === 'study' && cards.length > 0) {
+                currentIndex = 0;
+                updateCard();
+            } else if (pageId === 'manage') {
+                updateCardsList();
+            }
+        }
+
+        // 更新当前卡片
+        function updateCard() {
+            if (cards.length === 0) return;
+            
+            const card = cards[currentIndex];
+            document.getElementById('category-display').textContent = card.category;
+            
+            const frontText = document.getElementById('front-text');
+            const backText = document.getElementById('back-text');
+            
+            frontText.textContent = card.front;
+            backText.textContent = card.back;
+            
+            // 根据文本长度调整样式
+            adjustTextSize(frontText, card.front);
+            adjustTextSize(backText, card.back);
+            
+            document.getElementById('card-info').textContent = `${currentIndex + 1} / ${cards.length}`;
+            
+            // 重置翻转
+            document.getElementById('card').classList.remove('flipped');
+            isFlipped = false;
+        }
+
+        // 调整文本大小
+        function adjustTextSize(element, text) {
+            element.className = 'card-text';
+            
+            if (text.length > 80) {
+                element.classList.add('very-long-text');
+            } else if (text.length > 40) {
+                element.classList.add('long-text');
+            }
+        }
+
+        // 翻转卡片
+        function flipCard() {
+            const card = document.getElementById('card');
+            if (isFlipped) {
+                card.classList.remove('flipped');
+            } else {
+                card.classList.add('flipped');
+            }
+            isFlipped = !isFlipped;
+        }
+
+        // 下一张卡片
+        function nextCard() {
+            if (cards.length === 0) return;
+            currentIndex = (currentIndex + 1) % cards.length;
+            updateCard();
+        }
+
+        // 上一张卡片
+        function prevCard() {
+            if (cards.length === 0) return;
+            currentIndex = (currentIndex - 1 + cards.length) % cards.length;
+            updateCard();
+        }
+
+        // 添加卡片
+        function addCard() {
+            const category = document.getElementById('new-category').value;
+            const front = document.getElementById('new-front').value.trim();
+            const back = document.getElementById('new-back').value.trim();
+
+            if (!front || !back) {
+                alert('请填写完整内容！');
+                return;
+            }
+
+            cards.push({
+                id: Date.now(),
+                category: category,
+                front: front,
+                back: back
+            });
+
+            saveData();
+
+            // 清空表单
+            document.getElementById('new-front').value = '';
+            document.getElementById('new-back').value = '';
+
+            alert('添加成功！');
+        }
+
+        // 简化的卡片列表
+        function updateCardsList() {
+            const cardsList = document.getElementById('cards-list');
+            
+            if (cards.length === 0) {
+                cardsList.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 20px;">暂无卡片</p>';
+                return;
+            }
+            
+            cardsList.innerHTML = cards.map((card, index) => `
+                <div style="background: rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 10px; margin-bottom: 8px; border: 1px solid rgba(251, 191, 36, 0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="font-size: 0.7rem; color: #6b7280;">${card.category}</span>
+                        <button onclick="deleteCard(${card.id})" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); color: rgba(127, 29, 29, 0.8); border-radius: 4px; padding: 2px 6px; font-size: 0.7rem;">删除</button>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #374151; margin-bottom: 3px; max-height: 30px; overflow: hidden; white-space: pre-wrap;">${card.front}</div>
+                    <div style="font-size: 0.75rem; color: #6b7280; max-height: 25px; overflow: hidden; white-space: pre-wrap;">${card.back}</div>
+                </div>
+            `).join('');
+        }
+
+        // 删除卡片
+        function deleteCard(cardId) {
+            if (confirm('确定要删除这张卡片吗？')) {
+                cards = cards.filter(c => c.id !== cardId);
+                saveData();
+                updateCardsList();
+                
+                if (currentIndex >= cards.length && cards.length > 0) {
+                    currentIndex = cards.length - 1;
+                }
+            }
+        }
+
+        // 导出数据
+        function exportData() {
+            const data = {
+                cards: cards,
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mobile-anki-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 导入数据
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.cards) {
+                        cards = data.cards;
+                        saveData();
+                        alert('导入成功！');
+                        showPage('home');
+                    }
+                } catch (error) {
+                    alert('导入失败！');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 防止双击缩放
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+
+        // 初始化
+        updateStats();
+        initTheme();
+    </script>
+</body>
+</html>
