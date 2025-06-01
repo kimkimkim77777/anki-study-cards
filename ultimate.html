@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- PWA全屏设置 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="light-content">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#fffbf0">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <title>学习卡片</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        // 全屏功能
+        function toggleFullscreen() {
+            const fullscreenIcon = document.getElementById('fullscreen-icon');
+            
+            if (!document.fullscreenElement) {
+                // 进入全屏
+                document.documentElement.requestFullscreen().then(() => {
+                    document.body.classList.add('in-fullscreen');
+                    fullscreenIcon.textContent = '⊞';
+                }).catch(err => {
+                    console.log('全屏失败，尝试隐藏地址栏:', err);
+                    hideAddressBar();
+                });
+            } else {
+                // 退出全屏
+                document.exitFullscreen().then(() => {
+                    document.body.classList.remove('in-fullscreen');
+                    fullscreenIcon.textContent = '⛶';
+                });
+            }
+        }
+
+        // 隐藏地址栏（iOS Safari备用方案）
+        function hideAddressBar() {
+            setTimeout(function() {
+                window.scrollTo(0, 1);
+            }, 100);
+        }
+
+        // 监听全屏状态变化
+        document.addEventListener('fullscreenchange', function() {
+            const fullscreenIcon = document.getElementById('fullscreen-icon');
+            if (document.fullscreenElement) {
+                document.body.classList.add('in-fullscreen');
+                fullscreenIcon.textContent = '⊞';
+            } else {
+                document.body.classList.remove('in-fullscreen');
+                fullscreenIcon.textContent = '⛶';
+            }
+        });
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #fffbf0 0%, #fff7ed 50%, #fff1f2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 200;
+            color: #374151;
+            margin-bottom: 10px;
+            letter-spacing: 0.1em;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-weight: 300;
+        }
+
+        /* 导航卡片 */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .nav-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+            border-color: rgba(251, 191, 36, 0.5);
+        }
+
+        .nav-card .icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .nav-card h3 {
+            font-size: 1.1rem;
+            font-weight: 300;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .nav-card p {
+            font-size: 0.85rem;
+            color: #6b7280;
+            font-weight: 300;
+        }
+
+        /* 页面容器 */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .back-btn {
+            color: rgba(180, 83, 9, 0.8);
+            text-decoration: none;
+            font-weight: 300;
+            margin-bottom: 30px;
+            display: inline-block;
+            transition: color 0.2s ease;
+        }
+
+        .back-btn:hover {
+            color: rgba(180, 83, 9, 1);
+        }
+
+        /* 学习卡片 */
+        .card-study {
+            perspective: 1000px;
+            margin-bottom: 30px;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .card-inner.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, rgba(255, 251, 235, 0.9), rgba(254, 243, 199, 0.7));
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, rgba(255, 241, 242, 0.9), rgba(252, 231, 243, 0.7));
+            border: 1px solid rgba(251, 113, 133, 0.3);
+            transform: rotateY(180deg);
+        }
+
+        .card-category {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .card-front .card-category {
+            color: rgba(180, 83, 9, 0.7);
+        }
+
+        .card-back .card-category {
+            color: rgba(190, 18, 60, 0.7);
+        }
+
+        .card-text {
+            font-size: 1.5rem;
+            color: #374151;
+            text-align: center;
+            line-height: 1.6;
+            font-weight: 300;
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 0 10px;
+            white-space: pre-wrap; /* 保持换行和空格 */
+        }
+
+        /* 长文本自适应 */
+        .card-text.long-text {
+            font-size: 1.2rem;
+            line-height: 1.5;
+            text-align: left;
+            padding: 0 15px;
+            white-space: pre-wrap;
+        }
+
+        .card-text.very-long-text {
+            font-size: 1rem;
+            line-height: 1.4;
+            text-align: left;
+            padding: 0 20px;
+            white-space: pre-wrap;
+        }
+
+        /* 卡片预览文本也保持换行 */
+        .card-side-text {
+            color: #374151;
+            font-weight: 300;
+            line-height: 1.3;
+            max-height: 40px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            white-space: pre-wrap; /* 预览也保持换行 */
+        }
+
+        /* 美化滚动条 */
+        .card-text::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .card-text::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 2px;
+        }
+
+        .card-text::-webkit-scrollbar-thumb {
+            background: rgba(251, 191, 36, 0.3);
+            border-radius: 2px;
+        }
+
+        .card-text::-webkit-scrollbar-thumb:hover {
+            background: rgba(251, 191, 36, 0.5);
+        }
+
+        /* 夜间模式滚动条 */
+        .dark .card-text::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.3);
+        }
+
+        .dark .card-text::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 92, 246, 0.5);
+        }
+
+        /* 按钮 */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 300;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: rgba(180, 83, 9, 0.8);
+            min-width: 100px;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.4), rgba(249, 115, 22, 0.3));
+            border-color: rgba(251, 191, 36, 0.5);
+        }
+
+        /* 表单 */
+        .form-container {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #374151;
+            font-weight: 300;
+            font-size: 1.3rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #6b7280;
+            font-weight: 300;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            font-family: inherit;
+            font-weight: 300;
+            resize: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: rgba(251, 191, 36, 0.6);
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.1);
+        }
+
+        /* 统计 */
+        .stats {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .stats-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .stats-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(251, 191, 36, 0.7);
+        }
+
+        .stats span {
+            font-size: 0.85rem;
+            color: #6b7280;
+            font-weight: 300;
+        }
+
+        /* 夜间模式切换开关 */
+        .theme-toggle {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            z-index: 100;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .toggle-switch::before {
+            content: '☀️';
+            position: absolute;
+            top: 50%;
+            left: 6px;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.8), rgba(249, 115, 22, 0.6));
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-switch.dark::before {
+            content: '🌙';
+            left: 34px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.6));
+        }
+
+        /* 夜间模式样式 */
+        body.dark {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f1419 100%);
+        }
+
+        .dark .header h1 {
+            color: #e5e7eb;
+        }
+
+        .dark .header p {
+            color: #9ca3af;
+        }
+
+        .dark .nav-card {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .nav-card:hover {
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        .dark .nav-card h3 {
+            color: #e5e7eb;
+        }
+
+        .dark .nav-card p {
+            color: #9ca3af;
+        }
+
+        .dark .toggle-switch {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .back-btn {
+            color: rgba(139, 92, 246, 0.8);
+        }
+
+        .dark .back-btn:hover {
+            color: rgba(139, 92, 246, 1);
+        }
+
+        .dark .card-front {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(51, 65, 85, 0.7));
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .card-back {
+            background: linear-gradient(135deg, rgba(55, 48, 163, 0.3), rgba(99, 102, 241, 0.2));
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .dark .card-category {
+            color: rgba(139, 92, 246, 0.8);
+        }
+
+        .dark .card-text {
+            color: #e5e7eb;
+        }
+
+        .dark .btn {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: rgba(139, 92, 246, 0.9);
+        }
+
+        .dark .btn:hover {
+            background: rgba(30, 41, 59, 0.9);
+        }
+
+        .dark .btn-primary {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.3));
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        .dark .form-container {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .form-title {
+            color: #e5e7eb;
+        }
+
+        .dark .form-group label {
+            color: #9ca3af;
+        }
+
+        .dark .form-group input,
+        .dark .form-group select,
+        .dark .form-group textarea {
+            background: rgba(51, 65, 85, 0.8);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: #e5e7eb;
+        }
+
+        .dark .form-group input:focus,
+        .dark .form-group select:focus,
+        .dark .form-group textarea:focus {
+            border-color: rgba(99, 102, 241, 0.6);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+        }
+
+        .dark .stats-card {
+            background: rgba(30, 41, 59, 0.5);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .stats-dot {
+            background: rgba(99, 102, 241, 0.7);
+        }
+
+        .dark .stats span {
+            color: #9ca3af;
+        }
+
+        /* 彩色分类标签 */
+        .category-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 400;
+            border: 1px solid;
+            margin-bottom: 8px;
+        }
+
+        /* 分类颜色主题 */
+        .category-amber {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(249, 115, 22, 0.1));
+            color: rgba(180, 83, 9, 0.9);
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+
+        .category-rose {
+            background: linear-gradient(135deg, rgba(244, 63, 94, 0.2), rgba(225, 29, 72, 0.1));
+            color: rgba(159, 18, 57, 0.9);
+            border-color: rgba(244, 63, 94, 0.3);
+        }
+
+        .category-emerald {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.1));
+            color: rgba(21, 128, 61, 0.9);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .category-blue {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1));
+            color: rgba(29, 78, 216, 0.9);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .category-purple {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(124, 58, 237, 0.1));
+            color: rgba(109, 40, 217, 0.9);
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+
+        .category-pink {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(219, 39, 119, 0.1));
+            color: rgba(190, 24, 93, 0.9);
+            border-color: rgba(236, 72, 153, 0.3);
+        }
+
+        .category-teal {
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(13, 148, 136, 0.1));
+            color: rgba(15, 118, 110, 0.9);
+            border-color: rgba(20, 184, 166, 0.3);
+        }
+
+        .category-orange {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.1));
+            color: rgba(194, 65, 12, 0.9);
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        /* 夜间模式下的分类标签 */
+        .dark .category-amber {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(249, 115, 22, 0.2));
+            color: rgba(251, 191, 36, 0.9);
+        }
+
+        .dark .category-rose {
+            background: linear-gradient(135deg, rgba(244, 63, 94, 0.3), rgba(225, 29, 72, 0.2));
+            color: rgba(244, 63, 94, 0.9);
+        }
+
+        .dark .category-emerald {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.2));
+            color: rgba(34, 197, 94, 0.9);
+        }
+
+        .dark .category-blue {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.2));
+            color: rgba(59, 130, 246, 0.9);
+        }
+
+        .dark .category-purple {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.2));
+            color: rgba(139, 92, 246, 0.9);
+        }
+
+        .dark .category-pink {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.3), rgba(219, 39, 119, 0.2));
+            color: rgba(236, 72, 153, 0.9);
+        }
+
+        .dark .category-teal {
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.3), rgba(13, 148, 136, 0.2));
+            color: rgba(20, 184, 166, 0.9);
+        }
+
+        .dark .category-orange {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.3), rgba(234, 88, 12, 0.2));
+            color: rgba(249, 115, 22, 0.9);
+        }
+
+        /* 全屏按钮 */
+        .fullscreen-btn {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 45px;
+            height: 45px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .fullscreen-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .fullscreen-btn:active {
+            transform: translateY(0) scale(0.95);
+        }
+
+        .dark .fullscreen-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .fullscreen-btn:hover {
+            background: rgba(30, 41, 59, 0.9);
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .fullscreen-btn {
+                bottom: 20px;
+                left: 20px;
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
+
+        /* 全屏状态下的样式调整 */
+        body.in-fullscreen {
+            padding: 20px;
+        }
+
+        body.in-fullscreen .theme-toggle {
+            top: 20px;
+            right: 20px;
+        }
+
+        body.in-fullscreen .fullscreen-btn {
+            bottom: 20px;
+            left: 20px;
+        }
+
+        /* 卡片列表样式 */
+        .card-item {
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .card-item:hover {
+            border-color: rgba(251, 191, 36, 0.4);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            min-width: auto;
+            border-radius: 6px;
+        }
+
+        .card-content-preview {
+            display: grid;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .card-side-preview {
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            border-left: 3px solid rgba(251, 191, 36, 0.4);
+        }
+
+        .card-side-label {
+            font-size: 0.7rem;
+            color: #6b7280;
+            font-weight: 500;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .card-side-text {
+            color: #374151;
+            font-weight: 300;
+            line-height: 1.3;
+            max-height: 40px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            white-space: pre-wrap; /* 预览也保持换行 */
+        }
+
+        /* 夜间模式卡片列表 */
+        .dark .card-item {
+            background: rgba(30, 41, 59, 0.3);
+            border-color: rgba(99, 102, 241, 0.2);
+        }
+
+        .dark .card-item:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+        }
+
+        .dark .card-side-preview {
+            background: rgba(51, 65, 85, 0.3);
+            border-left-color: rgba(99, 102, 241, 0.4);
+        }
+
+        .dark .card-side-text {
+            color: #e5e7eb;
+        }
+
+        /* 编辑模态框 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 300;
+            color: #374151;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s ease;
+        }
+
+        .close-btn:hover {
+            color: #374151;
+        }
+
+        .dark .modal-content {
+            background: rgba(30, 41, 59, 0.95);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .dark .modal-title {
+            color: #e5e7eb;
+        }
+
+        .dark .close-btn {
+            color: #9ca3af;
+        }
+
+        .dark .close-btn:hover {
+            color: #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 主题切换开关 -->
+        <div class="theme-toggle">
+            <div class="toggle-switch" id="theme-toggle" onclick="toggleTheme()"></div>
+        </div>
+
+        <!-- 全屏按钮 -->
+        <div class="fullscreen-btn" onclick="toggleFullscreen()" title="全屏模式">
+            <span id="fullscreen-icon">⛶</span>
+        </div>
+
+        <!-- 主页 -->
+        <div id="home" class="page active">
+            <div class="header">
+                <h1>学习卡片</h1>
+                <p>优雅地记忆，温柔地学习</p>
+            </div>
+
+            <div class="nav-grid">
+                <div class="nav-card" onclick="showPage('study')">
+                    <div class="icon">📖</div>
+                    <h3>开始学习</h3>
+                    <p>复习学习卡片</p>
+                </div>
+
+                <div class="nav-card" onclick="showPage('add')">
+                    <div class="icon">➕</div>
+                    <h3>添加卡片</h3>
+                    <p>创建新内容</p>
+                </div>
+
+                <div class="nav-card" onclick="showPage('manage')">
+                    <div class="icon">📝</div>
+                    <h3>卡片管理</h3>
+                    <p>编辑整理卡片</p>
+                </div>
+
+                <div class="nav-card" onclick="showPage('data')">
+                    <div class="icon">⚙️</div>
+                    <h3>数据管理</h3>
+                    <p>备份恢复</p>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stats-card">
+                    <span>共有 <span id="total-cards">0</span> 张卡片</span>
+                    <div class="stats-dot"></div>
+                    <span>待复习 <span id="review-cards">0</span> 张</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 学习页面 -->
+        <div id="study" class="page">
+            <a href="#" class="back-btn" onclick="showPage('home')">← 返回</a>
+            
+            <div class="card-study">
+                <div class="card-inner" id="card" onclick="flipCard()">
+                    <div class="card-face card-front">
+                        <div id="category-display" class="category-tag category-amber">分类</div>
+                        <div class="card-text" id="front-text">开始学习吧</div>
+                    </div>
+                    <div class="card-face card-back">
+                        <div class="card-category">答案</div>
+                        <div class="card-text" id="back-text">答案内容</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn" onclick="prevCard()">← 上一张</button>
+                <button class="btn btn-primary" onclick="flipCard()">翻转</button>
+                <button class="btn" onclick="nextCard()">下一张 →</button>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px; color: #6b7280; font-size: 0.9rem;">
+                <span id="card-info">0 / 0</span>
+            </div>
+        </div>
+
+        <!-- 添加卡片页面 -->
+        <div id="add" class="page">
+            <a href="#" class="back-btn" onclick="showPage('home')">← 返回</a>
+            
+            <div class="form-container">
+                <h2 class="form-title">添加新卡片</h2>
+                
+                <div class="form-group">
+                    <label>分类</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <select id="new-category" style="flex: 1;">
+                            <option value="">选择分类</option>
+                        </select>
+                        <button type="button" class="btn" onclick="showNewCategoryInput()" style="padding: 12px 16px; min-width: auto; white-space: nowrap;">
+                            ➕ 新建
+                        </button>
+                    </div>
+                    <div id="new-category-input" style="display: none; margin-top: 12px;">
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" id="new-category-text" placeholder="输入新分类名称..." style="flex: 1;">
+                            <select id="category-color" style="width: auto; min-width: 80px;">
+                                <option value="amber">🧡 琥珀</option>
+                                <option value="rose">🌹 玫瑰</option>
+                                <option value="emerald">💚 翡翠</option>
+                                <option value="blue">💙 天空</option>
+                                <option value="purple">💜 紫罗兰</option>
+                                <option value="pink">🩷 樱花</option>
+                                <option value="teal">🩵 青绿</option>
+                                <option value="orange">🧡 橙色</option>
+                            </select>
+                            <button type="button" class="btn btn-primary" onclick="addNewCategory()" style="padding: 12px 16px; min-width: auto;">
+                                ✓
+                            </button>
+                            <button type="button" class="btn" onclick="hideNewCategoryInput()" style="padding: 12px 16px; min-width: auto;">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>正面（问题）</label>
+                    <textarea id="new-front" rows="3" placeholder="输入问题..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>背面（答案）</label>
+                    <textarea id="new-back" rows="3" placeholder="输入答案..."></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="addCard()" style="width: 100%; padding: 12px;">添加卡片</button>
+            </div>
+        </div>
+
+        <!-- 卡片管理页面 -->
+        <div id="manage" class="page">
+            <a href="#" class="back-btn" onclick="showPage('home')">← 返回</a>
+            
+            <div class="form-container">
+                <h2 class="form-title">卡片管理</h2>
+                
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;">
+                    <label style="color: #6b7280; font-weight: 300; font-size: 0.85rem;">排序：</label>
+                    <select id="sort-select" onchange="updateCardsList()" style="padding: 6px 10px; font-size: 0.85rem;">
+                        <option value="newest">最新添加</option>
+                        <option value="oldest">最早添加</option>
+                        <option value="category">按分类</option>
+                    </select>
+                    
+                    <label style="color: #6b7280; font-weight: 300; font-size: 0.85rem;">筛选：</label>
+                    <select id="filter-category" onchange="updateCardsList()" style="padding: 6px 10px; font-size: 0.85rem;">
+                        <option value="">全部分类</option>
+                    </select>
+                    
+                    <span style="color: #6b7280; font-size: 0.85rem; margin-left: auto;">
+                        共 <span id="filtered-count">0</span> 张卡片
+                    </span>
+                </div>
+
+                <div id="cards-list" style="max-height: 400px; overflow-y: auto;">
+                    <!-- 卡片列表 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计页面 -->
+        <div id="stats" class="page">
+            <a href="#" class="back-btn" onclick="showPage('home')">← 返回</a>
+            
+            <div class="form-container">
+                <h2 class="form-title">学习统计</h2>
+                <p style="text-align: center; color: #6b7280;">统计功能开发中...</p>
+            </div>
+        </div>
+
+        <!-- 数据管理页面 -->
+        <div id="data" class="page">
+            <a href="#" class="back-btn" onclick="showPage('home')">← 返回</a>
+            
+            <div class="form-container">
+                <h2 class="form-title">数据管理</h2>
+                
+                <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="exportData()" style="flex: 1;">导出数据</button>
+                    <label class="btn" style="flex: 1; text-align: center; cursor: pointer;">
+                        导入数据
+                        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+                    </label>
+                </div>
+                
+                <p style="text-align: center; color: #6b7280; font-size: 0.85rem;">
+                    定期备份你的学习数据
+                </p>
+            </div>
+        </div>
+
+        <!-- 编辑卡片模态框 -->
+        <div id="edit-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">编辑卡片</h3>
+                    <button class="close-btn" onclick="closeEditModal()">&times;</button>
+                </div>
+                
+                <div class="form-group">
+                    <label>分类</label>
+                    <select id="edit-category">
+                        <option value="">选择分类</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>正面（问题）</label>
+                    <textarea id="edit-front" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>背面（答案）</label>
+                    <textarea id="edit-back" rows="3"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" onclick="closeEditModal()" style="flex: 1;">取消</button>
+                    <button class="btn btn-primary" onclick="saveCardEdit()" style="flex: 1;">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 简单的数据管理
+        let cards = JSON.parse(localStorage.getItem('cards') || '[]');
+        let categories = JSON.parse(localStorage.getItem('categories') || '[]');
+        let currentIndex = 0;
+        let isFlipped = false;
+        let isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+        // 初始化数据
+        if (cards.length === 0) {
+            cards = [
+                { id: 1, category: '日语', front: 'こんにちは', back: '你好' },
+                { id: 2, category: '英语', front: 'Hello', back: '你好' }
+            ];
+            saveData();
+        }
+
+        // 初始化分类
+        if (categories.length === 0) {
+            categories = [
+                { name: '日语', color: 'amber' },
+                { name: '英语', color: 'blue' },
+                { name: '法语', color: 'rose' },
+                { name: '数学', color: 'emerald' },
+                { name: '其他', color: 'purple' }
+            ];
+            saveCategories();
+        }
+
+        // 初始化主题
+        function initTheme() {
+            if (isDarkMode) {
+                document.body.classList.add('dark');
+                document.getElementById('theme-toggle').classList.add('dark');
+            }
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('darkMode', isDarkMode);
+            
+            if (isDarkMode) {
+                document.body.classList.add('dark');
+                document.getElementById('theme-toggle').classList.add('dark');
+            } else {
+                document.body.classList.remove('dark');
+                document.getElementById('theme-toggle').classList.remove('dark');
+            }
+        }
+
+        // 保存数据
+        function saveData() {
+            localStorage.setItem('cards', JSON.stringify(cards));
+            updateStats();
+        }
+
+        // 保存分类
+        function saveCategories() {
+            localStorage.setItem('categories', JSON.stringify(categories));
+            updateCategorySelect();
+        }
+
+        // 更新统计
+        function updateStats() {
+            document.getElementById('total-cards').textContent = cards.length;
+            document.getElementById('review-cards').textContent = cards.length;
+        }
+
+        // 页面切换
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+            
+            if (pageId === 'study' && cards.length > 0) {
+                currentIndex = 0;
+                updateCard();
+            } else if (pageId === 'add') {
+                updateCategorySelect();
+            } else if (pageId === 'manage') {
+                updateManageFilters();
+                updateCardsList();
+            }
+        }
+
+        // 更新当前卡片
+        function updateCard() {
+            if (cards.length === 0) return;
+            
+            const card = cards[currentIndex];
+            const categoryInfo = categories.find(cat => cat.name === card.category) || { name: card.category, color: 'amber' };
+            
+            const categoryDisplay = document.getElementById('category-display');
+            categoryDisplay.textContent = categoryInfo.name;
+            categoryDisplay.className = `category-tag category-${categoryInfo.color}`;
+            
+            // 智能调整字体大小
+            const frontText = document.getElementById('front-text');
+            const backText = document.getElementById('back-text');
+            
+            frontText.textContent = card.front;
+            backText.textContent = card.back;
+            
+            // 根据文本长度调整样式
+            adjustTextSize(frontText, card.front);
+            adjustTextSize(backText, card.back);
+            
+            document.getElementById('card-info').textContent = `${currentIndex + 1} / ${cards.length}`;
+            
+            // 重置翻转
+            document.getElementById('card').classList.remove('flipped');
+            isFlipped = false;
+        }
+
+        // 智能调整文本大小
+        function adjustTextSize(element, text) {
+            element.className = 'card-text';
+            
+            if (text.length > 100) {
+                element.classList.add('very-long-text');
+            } else if (text.length > 50) {
+                element.classList.add('long-text');
+            }
+        }
+
+        // 翻转卡片
+        function flipCard() {
+            const card = document.getElementById('card');
+            if (isFlipped) {
+                card.classList.remove('flipped');
+            } else {
+                card.classList.add('flipped');
+            }
+            isFlipped = !isFlipped;
+        }
+
+        // 下一张卡片
+        function nextCard() {
+            if (cards.length === 0) return;
+            currentIndex = (currentIndex + 1) % cards.length;
+            updateCard();
+        }
+
+        // 上一张卡片
+        function prevCard() {
+            if (cards.length === 0) return;
+            currentIndex = (currentIndex - 1 + cards.length) % cards.length;
+            updateCard();
+        }
+
+        // 添加卡片
+        function addCard() {
+            const category = document.getElementById('new-category').value;
+            const front = document.getElementById('new-front').value.trim();
+            const back = document.getElementById('new-back').value.trim();
+
+            if (!front || !back) {
+                alert('请填写完整内容！');
+                return;
+            }
+
+            if (!category) {
+                alert('请选择分类！');
+                return;
+            }
+
+            cards.push({
+                id: Date.now(),
+                category: category,
+                front: front,
+                back: back
+            });
+
+            saveData();
+
+            // 清空表单
+            document.getElementById('new-category').value = '';
+            document.getElementById('new-front').value = '';
+            document.getElementById('new-back').value = '';
+
+            alert('添加成功！');
+        }
+
+        // 分类管理
+        function updateCategorySelect() {
+            const select = document.getElementById('new-category');
+            select.innerHTML = '<option value="">选择分类</option>';
+            
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.name;
+                option.textContent = category.name;
+                select.appendChild(option);
+            });
+        }
+
+        function showNewCategoryInput() {
+            document.getElementById('new-category-input').style.display = 'block';
+            document.getElementById('new-category-text').focus();
+        }
+
+        function hideNewCategoryInput() {
+            document.getElementById('new-category-input').style.display = 'none';
+            document.getElementById('new-category-text').value = '';
+            document.getElementById('category-color').value = 'amber';
+        }
+
+        function addNewCategory() {
+            const categoryName = document.getElementById('new-category-text').value.trim();
+            const categoryColor = document.getElementById('category-color').value;
+            
+            if (!categoryName) {
+                alert('请输入分类名称！');
+                return;
+            }
+
+            if (categories.find(cat => cat.name === categoryName)) {
+                alert('该分类已存在！');
+                return;
+            }
+
+            categories.push({
+                name: categoryName,
+                color: categoryColor
+            });
+
+            saveCategories();
+            
+            // 选中新建的分类
+            document.getElementById('new-category').value = categoryName;
+            
+            // 隐藏输入框
+            hideNewCategoryInput();
+
+            // 成功提示
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '✓';
+            btn.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.4), rgba(22, 163, 74, 0.3))';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 1500);
+        }
+
+        // 卡片管理
+        let editingCardId = null;
+
+        function updateManageFilters() {
+            const filterSelect = document.getElementById('filter-category');
+            filterSelect.innerHTML = '<option value="">全部分类</option>';
+            
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.name;
+                option.textContent = category.name;
+                filterSelect.appendChild(option);
+            });
+        }
+
+        function updateCardsList() {
+            const sortBy = document.getElementById('sort-select').value;
+            const filterBy = document.getElementById('filter-category').value;
+            
+            // 筛选卡片
+            let filteredCards = cards;
+            if (filterBy) {
+                filteredCards = cards.filter(card => card.category === filterBy);
+            }
+            
+            // 排序卡片
+            const sortedCards = [...filteredCards].sort((a, b) => {
+                switch (sortBy) {
+                    case 'newest':
+                        return b.id - a.id;
+                    case 'oldest':
+                        return a.id - b.id;
+                    case 'category':
+                        return a.category.localeCompare(b.category);
+                    default:
+                        return 0;
+                }
+            });
+            
+            // 更新统计
+            document.getElementById('filtered-count').textContent = filteredCards.length;
+            
+            // 渲染卡片列表
+            renderCardsList(sortedCards);
+        }
+
+        function renderCardsList(cardsToRender) {
+            const cardsList = document.getElementById('cards-list');
+            
+            if (cardsToRender.length === 0) {
+                cardsList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #6b7280;">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">📝</div>
+                        <p>没有找到符合条件的卡片</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            cardsList.innerHTML = cardsToRender.map(card => {
+                const categoryInfo = categories.find(cat => cat.name === card.category) || { name: card.category, color: 'amber' };
+                return `
+                    <div class="card-item">
+                        <div class="card-item-header">
+                            <div class="category-tag category-${categoryInfo.color}">${categoryInfo.name}</div>
+                            <div class="card-actions">
+                                <button class="btn btn-small" onclick="editCard(${card.id})">✏️ 编辑</button>
+                                <button class="btn btn-small" onclick="deleteCard(${card.id})" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.1)); border-color: rgba(239, 68, 68, 0.3); color: rgba(127, 29, 29, 0.8);">🗑️ 删除</button>
+                            </div>
+                        </div>
+                        <div class="card-content-preview">
+                            <div class="card-side-preview">
+                                <div class="card-side-label">正面</div>
+                                <div class="card-side-text">${card.front}</div>
+                            </div>
+                            <div class="card-side-preview">
+                                <div class="card-side-label">背面</div>
+                                <div class="card-side-text">${card.back}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function editCard(cardId) {
+            const card = cards.find(c => c.id === cardId);
+            if (!card) return;
+            
+            editingCardId = cardId;
+            
+            // 更新编辑分类选择器
+            const editSelect = document.getElementById('edit-category');
+            editSelect.innerHTML = '<option value="">选择分类</option>';
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.name;
+                option.textContent = category.name;
+                if (category.name === card.category) option.selected = true;
+                editSelect.appendChild(option);
+            });
+            
+            // 填充表单
+            document.getElementById('edit-front').value = card.front;
+            document.getElementById('edit-back').value = card.back;
+            
+            // 显示模态框
+            document.getElementById('edit-modal').classList.add('show');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('show');
+            editingCardId = null;
+        }
+
+        function saveCardEdit() {
+            if (!editingCardId) return;
+            
+            const category = document.getElementById('edit-category').value;
+            const front = document.getElementById('edit-front').value.trim();
+            const back = document.getElementById('edit-back').value.trim();
+            
+            if (!front || !back || !category) {
+                alert('请填写完整的卡片内容！');
+                return;
+            }
+            
+            // 更新卡片
+            const cardIndex = cards.findIndex(c => c.id === editingCardId);
+            if (cardIndex !== -1) {
+                cards[cardIndex] = {
+                    ...cards[cardIndex],
+                    category: category,
+                    front: front,
+                    back: back
+                };
+                
+                saveData();
+                updateCardsList();
+                closeEditModal();
+                
+                alert('保存成功！');
+            }
+        }
+
+        function deleteCard(cardId) {
+            const card = cards.find(c => c.id === cardId);
+            if (!card) return;
+            
+            if (confirm(`确定要删除这张卡片吗？\n\n正面：${card.front.slice(0, 50)}${card.front.length > 50 ? '...' : ''}\n背面：${card.back.slice(0, 50)}${card.back.length > 50 ? '...' : ''}`)) {
+                cards = cards.filter(c => c.id !== cardId);
+                saveData();
+                updateCardsList();
+                
+                // 如果当前正在学习这张卡片，调整索引
+                if (currentIndex >= cards.length && cards.length > 0) {
+                    currentIndex = cards.length - 1;
+                }
+            }
+        }
+
+        // 点击模态框外部关闭
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('edit-modal');
+            if (e.target === modal) {
+                closeEditModal();
+            }
+        });
+
+        // 导出数据
+        function exportData() {
+            const data = {
+                cards: cards,
+                categories: categories,
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `anki-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 导入数据
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.cards) {
+                        cards = data.cards;
+                        if (data.categories) {
+                            categories = data.categories;
+                            saveCategories();
+                        }
+                        saveData();
+                        alert('导入成功！');
+                        showPage('home');
+                    }
+                } catch (error) {
+                    alert('导入失败！');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 初始化
+        updateStats();
+        initTheme();
+        updateCategorySelect();
+
+        // 页面加载后的优化
+        window.addEventListener('load', function() {
+            // 隐藏地址栏
+            hideAddressBar();
+        });
+
+        // 屏幕旋转时重新隐藏地址栏
+        window.addEventListener('orientationchange', function() {
+            setTimeout(hideAddressBar, 500);
+        });
+    </script>
+</body>
+</html>
